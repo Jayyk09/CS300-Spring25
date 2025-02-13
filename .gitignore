@@ -1,0 +1,7 @@
+# Ignore executables without extension
+*
+!*.*
+!*/
+
+# Explicitly ignore a.out
+a.out
