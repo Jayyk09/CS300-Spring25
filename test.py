@@ -26,6 +26,10 @@ def main():
     print(f"Result: {result}")
     print(f"Using sys.version: {sys.version}")
     
+    a = 6 # used variable
+    b = 7 # used variable
+    c = a + b # unused variable
+
     for k, v in test_dict.items():
         print(f"{k}: {v}")
 
