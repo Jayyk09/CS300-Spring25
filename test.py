@@ -30,6 +30,10 @@ def main():
     b = 7 # used variable
     c = a + b # unused variable
 
+
+    word_counts = Counter(['apple', 'banana', 'apple', 'cherry', 'banana', 'apple'])
+    print("Most common words:", word_counts.most_common(2))
+
     for k, v in test_dict.items():
         print(f"{k}: {v}")
 
