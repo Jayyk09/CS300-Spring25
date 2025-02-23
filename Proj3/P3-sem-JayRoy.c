@@ -66,8 +66,9 @@ void *recruiter(void *arg) {
         sem_post(&recruiter_ready);
         printf("Recruiter call sem_post(recruiter_ready)\n");
         int t = mytime(left, right);
-        printf("Recruiter interviewing a student for %d sec\n", t);
+        printf("Recruiter to sleep %d sec;\n", t);
         sleep(t);
+        printf("Recruiter Id %lu wake up;\n", pthread_self());
     }
 	return NULL;
 }
@@ -75,7 +76,10 @@ void *recruiter(void *arg) {
 void *student(void *arg) {
     int id = (long long int)arg;
     for (int i = 0; i < 2; i++) {
-        sleep(mytime(left, right));
+        int t = mytime(left, right);
+        printf("Student %d to sleep %d sec;\n", id, t);
+        sleep(t);
+        printf("Student Id %d wake up;\n", id);
         printf("Student %d will call mutex_lock\n", id);
         pthread_mutex_lock(&student_lock);
         if (waiting < chairs) {
@@ -108,6 +112,12 @@ void *student(void *arg) {
     chairs = atoi(argv[2]);
     left = atoi(argv[3]);
     right = atoi(argv[4]);
+
+    if (students <= 0 || chairs <= 0 || left <= 0 || right <= 0 || left > right) {
+        fprintf(stderr, "Invalid input: students, chairs, left, right must be positive integers.\n");
+        exit(1);
+    }
+
 	
     srand(time(NULL));
     sem_init(&recruiter_ready, 0, 0);
@@ -127,6 +137,10 @@ void *student(void *arg) {
         pthread_create(&student_tids[i], NULL, student, id);
     }
 	
+    // for (long long int i = 0; i < students; i++) {
+    //     pthread_create(&student_tids[i], NULL, student, (void *)i);
+    // }
+
     for (int i = 0; i < students; i++) {
         pthread_join(student_tids[i], NULL);
     }
