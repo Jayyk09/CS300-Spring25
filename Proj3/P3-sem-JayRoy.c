@@ -1,122 +1,137 @@
+
+/*Name: Jay Roy
+CWID: 12342760
+P3: Jay Roy
+*/
+
 #include <stdio.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <pthread.h>
-#include <semaphore.h>
 #include <time.h>
+#include <semaphore.h>
 #include "mytime.h"
 
-void *student(void *num);
-void *recruiter(void *);
+int students;
+int chairs;
+int left;
+int right;
+int waiting = 0;
+sem_t recruiter_ready;
+sem_t students_waiting;
+ 
+// +++++ pthread APIs: +++++ 
+pthread_mutex_t  student_lock = PTHREAD_MUTEX_INITIALIZER; 
+// pthread_cond_t   cond1 = PTHREAD_COND_INITIALIZER; 
+// pthread_cond_wait(&cond1, &lock1); 
+// pthread_cond_signal(&cond1); 
+// pthread_mutex_lock(&locl1); 
+// pthread_mutex_unlock(&lock1); 
 
-// Semaphores for waiting room chairs, interview chair, interview completion, and student readiness.
-sem_t waitingRoom;      
-sem_t recruiterChair;     
-sem_t seatBelt;           
-sem_t studentReady;       
+// int get() { 
+//     int temp = buffer[use];
+//     use = (use + 1) % max;
+//     return temp;
+// } 
 
-pthread_mutex_t mutex;    // For protecting shared variables.
+// void put (int c) { 	
+//     buffer[fill] = c;
+//     fill = (fill + 1) % max;
+// }
 
-int studentsFinished = 0;
-int numStudents, numChairs, left, right;
+/*int mysleep (int left, int right)
+{
+	int mytime = 0;
+	int n = 0;
 
-int main(int argc, char *argv[]) {
-    if (argc != 5) {
-        printf("Usage: %s <num_students> <num_chairs> <left> <right>\n", argv[0]);
-        return -1;
+	n = rand()%(right - left);	
+	mytime = left + n;	
+	printf("random time is %d sec\n", mytime);
+	return  mytime;
+}
+*/
+
+void *recruiter(void *arg) {
+    while (1) {
+        if (waiting == 0) {
+            printf("Recruiter is idle, will go back to work.\n");
+        }
+        printf("Recruiter will call sem_wait(students_waiting)\n");
+        sem_wait(&students_waiting);
+        printf("Recruiter will call mutex_lock\n");
+        pthread_mutex_lock(&student_lock);
+        waiting--;
+        pthread_mutex_unlock(&student_lock);
+        printf("Recruiter call mutex_unlock\n");
+        sem_post(&recruiter_ready);
+        printf("Recruiter call sem_post(recruiter_ready)\n");
+        int t = mytime(left, right);
+        printf("Recruiter interviewing a student for %d sec\n", t);
+        sleep(t);
     }
+	return NULL;
+}
 
-    srand(time(NULL)); // Set random seed
+void *student(void *arg) {
+    int id = (long long int)arg;
+    for (int i = 0; i < 2; i++) {
+        sleep(mytime(left, right));
+        printf("Student %d will call mutex_lock\n", id);
+        pthread_mutex_lock(&student_lock);
+        if (waiting < chairs) {
+            waiting++;
+            printf("Student %d waiting, %d chairs left.\n", id, chairs - waiting);
+            pthread_mutex_unlock(&student_lock);
+            printf("Student %d call mutex_unlock\n", id);
+            sem_post(&students_waiting);
+            printf("Student %d call sem_post(students_waiting)\n", id);
+            sem_wait(&recruiter_ready);
+            printf("Student %d call sem_wait(recruiter_ready)\n", id);
+            printf("Student %d being interviewed.\n", id);
+        }
+        else {
+            pthread_mutex_unlock(&student_lock);
+            printf("Student %d call mutex_unlock\n", id);
+            printf("Student %d found no available chairs, will study and return.\n", id);
+        }
+    }
+	return NULL;
+}
 
-    numStudents = atoi(argv[1]);
-    numChairs = atoi(argv[2]);
+
+ int main(int argc, char *argv[]) {
+    if (argc != 5) {
+		fprintf(stderr, "usage: %s <students> <chairs> <left> <right>\n", argv[0]);
+		exit(1);
+    }
+    students = atoi(argv[1]);
+    chairs = atoi(argv[2]);
     left = atoi(argv[3]);
     right = atoi(argv[4]);
+	
+    srand(time(NULL));
+    sem_init(&recruiter_ready, 0, 0);
+    sem_init(&students_waiting, 0, 0);
+	
+    pthread_t student_tids[students];
+    pthread_t recruiter_tid;
+    pthread_create(&recruiter_tid, NULL, recruiter, NULL);
+   
+   // semaphore init... 
 
-    pthread_t recruiterThread;
-    pthread_t studentThreads[numStudents];
-    int studentNumbers[numStudents];
+   //srand (time (NULL));   
 
-    // Initialize semaphores.
-    sem_init(&waitingRoom, 0, numChairs);
-    sem_init(&recruiterChair, 0, 1);
-    sem_init(&seatBelt, 0, 0);
-    sem_init(&studentReady, 0, 0);
-
-    pthread_mutex_init(&mutex, NULL);
-
-    // Start the recruiter thread.
-    pthread_create(&recruiterThread, NULL, recruiter, NULL);
-
-    // Create student threads.
-    for (int i = 0; i < numStudents; i++) {
-        studentNumbers[i] = i + 1;
-        pthread_create(&studentThreads[i], NULL, student, (void *)&studentNumbers[i]);
-        sleep(1);  // Stagger student creation.
+   for (int i = 0; i < students; i++) {
+        int *id = malloc(sizeof(int));
+        *id = i + 1;
+        pthread_create(&student_tids[i], NULL, student, id);
     }
-
-    // Wait for all student threads to complete.
-    for (int i = 0; i < numStudents; i++) {
-        pthread_join(studentThreads[i], NULL);
+	
+    for (int i = 0; i < students; i++) {
+        pthread_join(student_tids[i], NULL);
     }
+    pthread_cancel(recruiter_tid);
 
-    // Signal that students are finished.
-    studentsFinished = 1;
-    // Post to studentReady to unblock recruiter if waiting.
-    sem_post(&studentReady);
-    pthread_join(recruiterThread, NULL);
-
+    printf("All students interviewed twice. Exiting.\n");
     return 0;
-}
-
-void *student(void *number) {
-    int id = *(int *)number;
-    for (int i = 0; i < 2; i++) {  // Each student gets 2 interview opportunities.
-        int sleepTime = mytime(left, right);
-        printf("Student %d to sleep for %d seconds.\n", id, sleepTime);
-        fflush(stdout);
-        sleep(sleepTime);
-
-        // Try to enter the waiting room.
-        sem_wait(&waitingRoom);
-        printf("Student %d takes a chair.\n", id);
-        fflush(stdout);
-
-        // Wait for the interview chair.
-        sem_wait(&recruiterChair);
-
-        // Signal the recruiter that a student is ready.
-        sem_post(&studentReady);
-
-        // Wait for the interview to finish.
-        sem_wait(&seatBelt);
-
-        // Release the interview chair and waiting room chair.
-        sem_post(&recruiterChair);
-        sem_post(&waitingRoom);
-    }
-    return NULL;
-}
-
-void *recruiter(void *junk) {
-    while (1) {
-        sem_wait(&studentReady); // Wait until a student is ready.
-        pthread_mutex_lock(&mutex);
-        if (studentsFinished) {
-            pthread_mutex_unlock(&mutex);
-            break;  // Exit if all students have finished.
-        }
-        pthread_mutex_unlock(&mutex);
-
-        int sleepTime = mytime(left, right);
-        sleep(sleepTime);  // Simulate interview duration.
-        printf("Recruiter finished an interview.\n");
-        fflush(stdout);
-
-        // Signal the student that the interview is over.
-        sem_post(&seatBelt);
-    }
-    printf("Recruiter has exited.\n");
-    fflush(stdout);
-    return NULL;
-}
+ }
