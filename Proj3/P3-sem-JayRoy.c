@@ -51,6 +51,7 @@ pthread_mutex_t  student_lock = PTHREAD_MUTEX_INITIALIZER;
 }
 */
 
+
 void *recruiter(void *arg) {
     while (1) {
         if (waiting == 0) {
@@ -70,7 +71,8 @@ void *recruiter(void *arg) {
         sleep(t);
         printf("Recruiter Id %lu wake up;\n", pthread_self());
     }
-	return NULL;
+    printf("Recruiter Id %lu exit;\n", pthread_self());
+    return NULL;
 }
 
 void *student(void *arg) {
@@ -92,54 +94,41 @@ void *student(void *arg) {
             sem_wait(&recruiter_ready);
             printf("Student %d call sem_wait(recruiter_ready)\n", id);
             printf("Student %d being interviewed.\n", id);
-        }
-        else {
+        } else {
             pthread_mutex_unlock(&student_lock);
             printf("Student %d call mutex_unlock\n", id);
             printf("Student %d found no available chairs, will study and return.\n", id);
         }
     }
-	return NULL;
+    return NULL;
 }
 
-
- int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
     if (argc != 5) {
-		fprintf(stderr, "usage: %s <students> <chairs> <left> <right>\n", argv[0]);
-		exit(1);
+        fprintf(stderr, "usage: %s <students> <chairs> <left> <right>\n", argv[0]);
+        exit(1);
     }
     students = atoi(argv[1]);
     chairs = atoi(argv[2]);
     left = atoi(argv[3]);
     right = atoi(argv[4]);
 
-    if (students <= 0 || chairs <= 0 || left <= 0 || right <= 0 || left > right) {
-        fprintf(stderr, "Invalid input: students, chairs, left, right must be positive integers.\n");
+    if (students <= 0 || chairs <= 0 || left <= 0 || right <= 0 || left >= right) {
+        fprintf(stderr, "Invalid input: students, chairs, left, right must be positive integers and left must be less than right.\n");
         exit(1);
     }
 
-	
     srand(time(NULL));
     sem_init(&recruiter_ready, 0, 0);
     sem_init(&students_waiting, 0, 0);
-	
+
     pthread_t student_tids[students];
     pthread_t recruiter_tid;
     pthread_create(&recruiter_tid, NULL, recruiter, NULL);
-   
-   // semaphore init... 
 
-   //srand (time (NULL));   
-
-   for (int i = 0; i < students; i++) {
-        int *id = malloc(sizeof(int));
-        *id = i + 1;
-        pthread_create(&student_tids[i], NULL, student, id);
+    for (int i = 0; i < students; i++) {
+        pthread_create(&student_tids[i], NULL, student, (void *)(long long int)(i + 1));
     }
-	
-    // for (long long int i = 0; i < students; i++) {
-    //     pthread_create(&student_tids[i], NULL, student, (void *)i);
-    // }
 
     for (int i = 0; i < students; i++) {
         pthread_join(student_tids[i], NULL);
@@ -148,4 +137,4 @@ void *student(void *arg) {
 
     printf("All students interviewed twice. Exiting.\n");
     return 0;
- }
+}
