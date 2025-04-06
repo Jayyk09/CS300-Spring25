@@ -1,18 +1,20 @@
 /**
- * Virtual Memory Manager - Part 1
- * 
- * This program simulates a virtual memory system with:
+ * Project 4 - Part 1: Virtual Memory Manager
+
+ Name: Jay Roy
+ Date: 04/06/2025   
+ Usage: ./program_name addresses_file
+ CWID: 12342760
+
+ This program simulates a virtual memory system with:
  * - 16-bit virtual address space (65,536 bytes)
  * - 8-bit page number and 8-bit offset
  * - 256 pages of 256 bytes each
  * - 256 frames in physical memory
  * - 16-entry TLB with FIFO replacement
  * - On-demand paging with backing store
- * 
- * The program translates logical addresses to physical addresses,
- * handles page faults, and manages the TLB.
  */
-
+ 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>

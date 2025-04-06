@@ -1,15 +1,16 @@
 /**
- * Virtual Memory Manager - Part 2 with Page Replacement
+ * Project 4 - Part 2: Virtual Memory Manager
+ * 
+ * Name: Jay Roy
+ * Date: 04/06/2025
+ * Usage: ./program_name addresses_file [frame_count]
+ * CWID: 12342760
  * 
  * This program extends Part 1 by:
  * - Supporting variable-sized physical memory (fewer frames than virtual pages)
  * - Implementing LRU page replacement when physical memory is full
- * - Tracking page usage for replacement decisions
  * 
- * Usage: ./program_name addresses_file [frame_count]
- * If frame_count is not specified, defaults to 128 frames.
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
